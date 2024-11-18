@@ -22,6 +22,9 @@ public class DigitalSignatureTest {
 
 	/** Plain text to digest. */
 	private final String plainText = "This is the plain text!";
+	private final String tamperedText = "This is tampered text!";
+	private final byte[] plainBytes = plainText.getBytes();
+	private final byte[] tamperedBytes = tamperedText.getBytes();
 
 	/** Asymmetric cryptography algorithm. */
 	private static final String ASYM_ALGO = "RSA";
@@ -199,6 +202,42 @@ public class DigitalSignatureTest {
 			if (digest[i] != decipheredDigest[i])
 				return false;
 		return true;
+	}
+
+	@Test
+	public void testTamperedDetectionSignature() throws Exception {
+		System.out.print("TEST '");
+        System.out.print(SIGNATURE_ALGO);
+        System.out.println("' tamper detection for digital signature");
+
+        // Generate RSA KeyPair
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+        keyGen.initialize(2048);
+        KeyPair keyPair = keyGen.generateKeyPair();
+
+        // Create signature for original text
+        Signature signature = Signature.getInstance(SIGNATURE_ALGO);
+        signature.initSign(keyPair.getPrivate());
+        signature.update(plainText.getBytes());
+        byte[] originalSignature = signature.sign();
+        System.out.print("Original Signature: ");
+        System.out.println(printHexBinary(originalSignature));
+
+        // Verify signature for original text
+        signature.initVerify(keyPair.getPublic());
+        signature.update(plainText.getBytes());
+        boolean isOriginalValid = signature.verify(originalSignature);
+        System.out.println("Original signature verification: " + (isOriginalValid ? "Valid" : "Tampered"));
+
+        // Verify signature for tampered text
+        signature.initVerify(keyPair.getPublic());
+        signature.update(tamperedText.getBytes());
+        boolean isTamperedValid = signature.verify(originalSignature);
+        System.out.println("Tampered signature verification: " + (isTamperedValid ? "Valid" : "Tampered"));
+
+        // Assertions
+        assertTrue(isOriginalValid, "Signature must be valid for original text");
+        assertFalse(isTamperedValid, "Signature verification must fail for tampered data");
 	}
 
 }

@@ -23,8 +23,10 @@ public class MACTest {
 
 	/** Plain text to protect with the message authentication code. */
 	final String plainText = "This is the plain text!";
+	final String tamperedText = "This is tampered text!";
 	/** Plain text bytes. */
 	final byte[] plainBytes = plainText.getBytes();
+	final byte[] tamperedBytes = tamperedText.getBytes();
 
 	/** Symmetric cryptography algorithm. */
 	private static final String SYM_ALGO = "AES";
@@ -196,4 +198,19 @@ public class MACTest {
 		return true;
 	}
 
+
+	@Test
+	public void testTamperDetectionMAC() throws Exception {
+		System.out.print("TEST '");
+		System.out.print(MAC_ALGO);
+		System.out.println("' tamper detection for MAC");
+
+		// generate secret key and compute MACs
+		SecretKey key = generateMACKey(SYM_KEY_SIZE);
+		byte[] originalMAC = makeMAC(plainBytes, key);
+		byte[] tamperedMAC = makeMAC(tamperedBytes, key);
+		// verify integrity
+		boolean isValid = java.util.Arrays.equals(originalMAC, tamperedMAC);
+		System.out.println("MAC is " + (isValid ? "right" : "wrong! TAMPERED"));
+	}
 }
