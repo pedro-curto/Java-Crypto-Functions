@@ -210,34 +210,22 @@ public class DigitalSignatureTest {
         System.out.print(SIGNATURE_ALGO);
         System.out.println("' tamper detection for digital signature");
 
-        // Generate RSA KeyPair
+        // generate RSA KeyPair
         KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
         keyGen.initialize(2048);
         KeyPair keyPair = keyGen.generateKeyPair();
 
-        // Create signature for original text
-        Signature signature = Signature.getInstance(SIGNATURE_ALGO);
-        signature.initSign(keyPair.getPrivate());
-        signature.update(plainText.getBytes());
-        byte[] originalSignature = signature.sign();
+        // create signature for original text
+        byte[] originalSignature = makeDigitalSignature(plainBytes, keyPair);
         System.out.print("Original Signature: ");
         System.out.println(printHexBinary(originalSignature));
 
-        // Verify signature for original text
-        signature.initVerify(keyPair.getPublic());
-        signature.update(plainText.getBytes());
-        boolean isOriginalValid = signature.verify(originalSignature);
+		// verify signatures and assert
+		boolean isOriginalValid = verifyDigitalSignature(originalSignature, plainBytes, keyPair);
         System.out.println("Original signature verification: " + (isOriginalValid ? "Valid" : "Tampered"));
-
-        // Verify signature for tampered text
-        signature.initVerify(keyPair.getPublic());
-        signature.update(tamperedText.getBytes());
-        boolean isTamperedValid = signature.verify(originalSignature);
+		boolean isTamperedValid = verifyDigitalSignature(originalSignature, tamperedBytes, keyPair);
         System.out.println("Tampered signature verification: " + (isTamperedValid ? "Valid" : "Tampered"));
-
-        // Assertions
         assertTrue(isOriginalValid, "Signature must be valid for original text");
         assertFalse(isTamperedValid, "Signature verification must fail for tampered data");
 	}
-
 }

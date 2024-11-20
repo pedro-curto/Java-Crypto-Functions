@@ -1,11 +1,14 @@
 package pt.tecnico.crypto;
 
 import static javax.xml.bind.DatatypeConverter.printHexBinary;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -201,16 +204,78 @@ public class MACTest {
 
 	@Test
 	public void testTamperDetectionMAC() throws Exception {
-		System.out.print("TEST '");
-		System.out.print(MAC_ALGO);
-		System.out.println("' tamper detection for MAC");
-
-		// generate secret key and compute MACs
+		// generate secret key and MAC for plain text
 		SecretKey key = generateMACKey(SYM_KEY_SIZE);
 		byte[] originalMAC = makeMAC(plainBytes, key);
-		byte[] tamperedMAC = makeMAC(tamperedBytes, key);
-		// verify integrity
-		boolean isValid = java.util.Arrays.equals(originalMAC, tamperedMAC);
-		System.out.println("MAC is " + (isValid ? "right" : "wrong! TAMPERED"));
+
+		// alter the message
+		byte[] tamperedMessage = tamperedBytes;
+
+		// attempt to verify the MAC with the tampered message
+		boolean isValid = verifyMAC(originalMAC, tamperedMessage, key);
+
+		// output result and assert that the verification should fail
+		System.out.println("MAC verification result: " + (isValid ? "Valid" : "Tampered!"));
+		assertFalse(isValid, "MAC verification must fail for tampered data");
+	}
+
+	@Test
+	public void testMACWithNonce() throws Exception {
+		System.out.print("TEST '");
+		System.out.print(MAC_ALGO);
+		System.out.println("' message authentication code with nonce.");
+
+		// registry for used nonces
+		Set<String> nonceRegistry = new HashSet<>();
+
+		// generate key and nonce
+		SecretKey key = generateMACKey(SYM_KEY_SIZE);
+		byte[] nonce = generateNonce();
+		String nonceHex = printHexBinary(nonce);
+		System.out.println("Nonce: ");
+		System.out.println(nonceHex);
+
+		// append nonce to plaintext
+		byte[] msgWithNonce = concatenate(plainBytes, nonce);
+		System.out.println("Text with nonce: ");
+		System.out.println(printHexBinary(msgWithNonce));
+
+		// compute MAC with nonce
+		System.out.println("Computing MAC with nonce...");
+		byte[] macWithNonce = makeMAC(msgWithNonce, key);
+		System.out.print("MAC: ");
+		System.out.println(printHexBinary(macWithNonce));
+
+		// simulate verification and add to registry
+		System.out.println("Verifying...");
+		boolean isReplay = nonceRegistry.contains(nonceHex); // Check if nonce is reused
+		boolean isValid = verifyMAC(macWithNonce, msgWithNonce, key) && !isReplay;
+		System.out.println("MAC verification result: " + (isValid ? "Valid" : "Replay Attack Detected"));
+		nonceRegistry.add(nonceHex);
+
+		assertTrue(isValid, "MAC must match for untampered data and fresh nonce");
+
+		// simulate replay attack by reusing the same nonce
+		System.out.println("Simulating replay attack...");
+		byte[] replayedMessageWithNonce = concatenate(plainBytes, nonce);
+		boolean isReplayAttack = nonceRegistry.contains(nonceHex); // Nonce already in registry
+
+		// replay detection logic
+		assertTrue(isReplayAttack, "Replay attack must fail due to reused nonce");
+		System.out.println("Replay attack detected: " + (isReplayAttack ? "Yes" : "No"));
+	}
+
+	private byte[] generateNonce() {
+		byte[] nonce = new byte[16];
+		SecureRandom random = new SecureRandom();
+		random.nextBytes(nonce);
+		return nonce;
+	}
+
+	private static byte[] concatenate(byte[] nonce, byte[] data) {
+		byte[] result = new byte[nonce.length + data.length];
+		System.arraycopy(nonce, 0, result, 0, nonce.length);
+		System.arraycopy(data, 0, result, nonce.length, data.length);
+		return result;
 	}
 }
