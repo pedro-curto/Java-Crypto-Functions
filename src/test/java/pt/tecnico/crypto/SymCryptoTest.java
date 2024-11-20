@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test;
 public class SymCryptoTest {
 	/** Plain text to cipher. */
 	private final String plainText = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+	private final String stringForTime = "A".repeat(200);
+	private final byte[] bytesForTime = stringForTime.getBytes();
 	/** Plain text bytes. */
 	private final byte[] plainBytes = plainText.getBytes();
 
@@ -131,6 +133,57 @@ public class SymCryptoTest {
 		System.out.println();
 		System.out.println();
 	}
+
+	@Test
+	public void testSymCryptoECBWithTiming() throws Exception {
+		System.out.print("TEST '");
+		System.out.print(SYM_CIPHER_ECB);
+		System.out.println("' with timing");
+
+		System.out.println("Text:");
+		System.out.println(stringForTime);
+		System.out.println("Bytes:");
+		System.out.println(printHexBinary(bytesForTime));
+
+		long startTime, endTime;
+		long keyGenTime, encryptionTime, decryptionTime;
+
+		startTime = System.nanoTime();
+		KeyGenerator keyGen = KeyGenerator.getInstance(SYM_ALGO);
+		keyGen.init(SYM_KEY_SIZE);
+		Key key = keyGen.generateKey();
+		endTime = System.nanoTime();
+		keyGenTime = endTime - startTime;
+		System.out.println("Key generation time (ns): " + keyGenTime);
+
+		Cipher cipher = Cipher.getInstance(SYM_CIPHER_ECB);
+
+		// encryption timing
+		startTime = System.nanoTime();
+		cipher.init(Cipher.ENCRYPT_MODE, key);
+		byte[] cipherBytes = cipher.doFinal(bytesForTime);
+		endTime = System.nanoTime();
+		encryptionTime = endTime - startTime;
+		System.out.println("Encryption time (ns): " + encryptionTime);
+
+		// decryption timing
+		startTime = System.nanoTime();
+		cipher.init(Cipher.DECRYPT_MODE, key);
+		byte[] newPlainBytes = cipher.doFinal(cipherBytes);
+		endTime = System.nanoTime();
+		decryptionTime = endTime - startTime;
+		System.out.println("Decryption time (ns): " + decryptionTime);
+
+		// verify result
+		String newPlainText = new String(newPlainBytes);
+		assertEquals(stringForTime, newPlainText);
+
+		// output total times
+		System.out.println("AES Key Generation Time (ns): " + keyGenTime);
+		System.out.println("AES Encryption Time (ns): " + encryptionTime);
+		System.out.println("AES Decryption Time (ns): " + decryptionTime);
+	}
+
 
 	public static IvParameterSpec generateIv() {
 		byte[] iv = new byte[16];

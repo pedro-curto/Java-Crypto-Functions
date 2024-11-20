@@ -20,6 +20,8 @@ public class AsymCryptoTest {
 	private final String plainText = "This is the plain text!";
 	/** Plain text bytes. */
 	private final byte[] plainBytes = plainText.getBytes();
+	private final String stringForTime = "A".repeat(200);
+	private final byte[] bytesForTime = stringForTime.getBytes();
 
 	/** Asymmetric cryptography algorithm. */
 	private static final String ASYM_ALGO = "RSA";
@@ -127,5 +129,57 @@ public class AsymCryptoTest {
 		System.out.println();
 		System.out.println();
 	}
+
+	@Test
+	public void testEncryptDecryptWithTiming() throws Exception {
+		System.out.print("TEST '");
+		System.out.print(ASYM_CIPHER);
+		System.out.println("' cipher with public, decipher with private, with timing");
+
+		System.out.println("Text");
+		System.out.println(stringForTime);
+		System.out.println("Bytes:");
+		System.out.println(printHexBinary(bytesForTime));
+
+		long startTime, endTime;
+		long keyGenTime, encryptionTime, decryptionTime;
+
+		// key generation timing
+		startTime = System.nanoTime();
+		KeyPairGenerator keyGen = KeyPairGenerator.getInstance(ASYM_ALGO);
+		keyGen.initialize(ASYM_KEY_SIZE);
+		KeyPair keyPair = keyGen.generateKeyPair();
+		endTime = System.nanoTime();
+		keyGenTime = endTime - startTime;
+		System.out.println("Key generation time (ns): " + keyGenTime);
+
+		Cipher cipher = Cipher.getInstance(ASYM_CIPHER);
+
+		// encryption timing
+		startTime = System.nanoTime();
+		cipher.init(Cipher.ENCRYPT_MODE, keyPair.getPublic());
+		byte[] cipherBytes = cipher.doFinal(bytesForTime);
+		endTime = System.nanoTime();
+		encryptionTime = endTime - startTime;
+		System.out.println("Encryption time (ns): " + encryptionTime);
+
+		// decryption timing
+		startTime = System.nanoTime();
+		cipher.init(Cipher.DECRYPT_MODE, keyPair.getPrivate());
+		byte[] decipheredBytes = cipher.doFinal(cipherBytes);
+		endTime = System.nanoTime();
+		decryptionTime = endTime - startTime;
+		System.out.println("Decryption time (ns): " + decryptionTime);
+
+		// verify result
+		String newPlainText = new String(decipheredBytes);
+		assertEquals(stringForTime, newPlainText);
+
+		// output total times
+		System.out.println("RSA Key Generation Time (ns): " + keyGenTime);
+		System.out.println("RSA Encryption Time (ns): " + encryptionTime);
+		System.out.println("RSA Decryption Time (ns): " + decryptionTime);
+	}
+
 
 }
